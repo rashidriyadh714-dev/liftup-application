@@ -68,40 +68,6 @@
           <runtimePathOption>CLASSPATH</runtimePathOption>
         </configuration>
       </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-dependency-plugin</artifactId>
-        <version>3.6.0</version>
-        <executions>
-          <execution>
-            <id>copy-dependencies</id>
-            <phase>prepare-package</phase>
-            <goals>
-              <goal>copy-dependencies</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>${project.build.directory}/lib</outputDirectory>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.panteleyev</groupId>
-        <artifactId>jpackage-maven-plugin</artifactId>
-        <version>1.5.1</version>
-        <configuration>
-          <name>LiftUp</name>
-          <appVersion>${project.version}</appVersion>
-          <vendor>LiftUp</vendor>
-          <destination>target/dist</destination>
-          <mainClass>com.liftup.Launcher</mainClass>
-          <mainJar>${project.build.finalName}.jar</mainJar>
-          <modulePath>
-            <path>${project.build.directory}/lib</path>
-          </modulePath>
-          <input>${project.build.directory}</input>
-        </configuration>
-      </plugin>
     </plugins>
   </build>
 </project>

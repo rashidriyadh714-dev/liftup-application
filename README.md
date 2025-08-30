@@ -45,18 +45,6 @@ This project is built with Java 17 and JavaFX, using Maven for dependency manage
    ```shell
    mvn clean compile exec:java -Dexec.mainClass="com.liftup.Launcher"
    ```
-
-  ## Download (releases)
-
-  Pre-built JAR releases are available on the repository Releases page. To download the latest packaged application:
-
-  1. Go to the repository on GitHub.
-  2. Click "Releases" on the right-hand side (or visit /releases).
-  3. Download the JAR asset (for example, `liftup-7.1.0.jar`).
-
-  CI and Release status badges
-
-  The repository includes GitHub Actions workflows to build the project and attach JARs to releases. After you push a tag like `v7.1.1`, a release will be created automatically with the JAR attached.
 4. The application window will launch.
 
 ## Technologies Used
