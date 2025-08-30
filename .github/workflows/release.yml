@@ -70,8 +70,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/liftup-linux/LiftUp-7.1.0.deb
-        asset_name: liftup-linux.deb
+        asset_path: ./dist/liftup-linux/LiftUp-${{ github.ref_name }}.deb
+        asset_name: liftup-linux-${{ github.ref_name }}.deb
         asset_content_type: application/vnd.debian.binary-package
 
     - name: Upload Release Asset (Windows)
@@ -80,8 +80,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/liftup-windows/LiftUp-7.1.0.msi
-        asset_name: liftup-windows.msi
+        asset_path: ./dist/liftup-windows/LiftUp-${{ github.ref_name }}.msi
+        asset_name: liftup-windows-${{ github.ref_name }}.msi
         asset_content_type: application/x-msi
 
     - name: Upload Release Asset (macOS)
@@ -90,6 +90,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/liftup-macos/LiftUp-7.1.0.dmg
-        asset_name: liftup-macos.dmg
+        asset_path: ./dist/liftup-macos/LiftUp-${{ github.ref_name }}.dmg
+        asset_name: liftup-macos-${{ github.ref_name }}.dmg
         asset_content_type: application/x-apple-diskimage
