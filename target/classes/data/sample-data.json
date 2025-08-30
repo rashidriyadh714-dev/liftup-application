@@ -1,0 +1,72 @@
+{
+  "beneficiaries": [
+    {
+      "id": "b1",
+      "name": "Amina Yusuf",
+      "householdSize": 5,
+      "skills": [
+        "cooking",
+        "sewing",
+        "sales"
+      ]
+    },
+    {
+      "id": "b2",
+      "name": "Rahul Singh",
+      "householdSize": 4,
+      "skills": [
+        "data entry",
+        "translation",
+        "typing"
+      ]
+    },
+    {
+      "id": "b3",
+      "name": "Nur Izzah",
+      "householdSize": 6,
+      "skills": [
+        "baking",
+        "food prep",
+        "sales"
+      ]
+    }
+  ],
+  "opportunities": [
+    {
+      "id": "o1",
+      "title": "Community Kitchen Assistant",
+      "requiredSkills": [
+        "cooking",
+        "hygiene"
+      ],
+      "payout": 450.0
+    },
+    {
+      "id": "o2",
+      "title": "Market Stall Sales",
+      "requiredSkills": [
+        "sales",
+        "customer service"
+      ],
+      "payout": 600.0
+    },
+    {
+      "id": "o3",
+      "title": "Online Data Entry (Part-time)",
+      "requiredSkills": [
+        "data entry",
+        "typing"
+      ],
+      "payout": 350.0
+    },
+    {
+      "id": "o4",
+      "title": "Bakery Helper",
+      "requiredSkills": [
+        "baking",
+        "food prep"
+      ],
+      "payout": 500.0
+    }
+  ]
+}
