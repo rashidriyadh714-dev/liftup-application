@@ -1,0 +1,186 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-2025, macos-15]
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            extension: deb
+          - os: windows-2025
+            platform: win
+            extension: exe
+          - os: macos-15
+            platform: mac
+            extension: dmg
+      fail-fast: false
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Setup JavaFX dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb libgtk-3-dev
+
+    - name: Build with Maven
+      run: mvn -B package --file pom.xml
+
+    - name: Prepare jpackage input
+      shell: bash
+      run: |
+        mkdir -p package/input
+        mkdir -p package/input/libs
+        # Copy the main JAR
+        cp target/liftup-*.jar package/input/
+        # Copy all dependency JARs
+        cp target/lib/*.jar package/input/libs/
+        echo "JAR_NAME=$(basename $(find package/input -name 'liftup*.jar'))" >> $GITHUB_ENV
+        echo "Found JAR: $JAR_NAME"
+        ls -la package/input/
+        ls -la package/input/libs/
+        mkdir -p package/output
+
+    - name: Create Windows Installer
+      if: matrix.os == 'windows-2025'
+      shell: bash
+      run: |
+        VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+        echo "Using JAR: $JAR_NAME"
+        ls -la package/input/
+        jpackage \
+          --input package/input \
+          --dest package/output \
+          --main-jar "$JAR_NAME" \
+          --main-class com.liftup.Launcher \
+          --type exe \
+          --name LiftUp \
+          --app-version $VERSION \
+          --vendor "LiftUp" \
+          --description "LiftUp Application" \
+          --win-dir-chooser \
+          --win-menu \
+          --win-shortcut \
+          --win-per-user-install \
+          --class-path "libs/*"
+
+    - name: Create macOS DMG
+      if: matrix.os == 'macos-15'
+      run: |
+        VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+        echo "Using JAR: $JAR_NAME"
+        ls -la package/input/
+        
+        # Create runtime image with required modules
+        jlink \
+          --module-path target/lib \
+          --add-modules java.desktop,javafx.controls,javafx.fxml,javafx.graphics \
+          --output package/runtime
+        
+        jpackage \
+          --input package/input \
+          --dest package/output \
+          --main-jar "$JAR_NAME" \
+          --main-class com.liftup.Launcher \
+          --type dmg \
+          --name LiftUp \
+          --app-version $VERSION \
+          --vendor "LiftUp" \
+          --mac-package-identifier com.liftup \
+          --mac-package-name LiftUp \
+          --runtime-image package/runtime \
+          --java-options "-Dprism.verbose=true" \
+          --java-options "-Djavafx.verbose=true" \
+          --class-path "libs/*" \
+          --verbose
+
+    - name: Create Linux Package
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+        echo "Using JAR: $JAR_NAME"
+        ls -la package/input/
+        jpackage \
+          --input package/input \
+          --dest package/output \
+          --main-jar "$JAR_NAME" \
+          --main-class com.liftup.Launcher \
+          --type deb \
+          --name liftup \
+          --app-version $VERSION \
+          --vendor "LiftUp" \
+          --linux-shortcut \
+          --linux-menu-group "Office" \
+          --class-path "libs/*" \
+          --verbose
+
+    - name: List Output Directory
+      shell: bash
+      run: |
+        ls -la package/output/
+
+    - name: Upload Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: liftup-${{ matrix.platform }}-installer
+        path: package/output/*
+        retention-days: 5
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+        
+    - name: Display structure of downloaded files
+      run: ls -R artifacts/
+        
+    - name: Prepare Release Files
+      run: |
+        mkdir -p release-files
+        find artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.deb" \) -exec cp -v {} release-files/ \;
+        ls -la release-files/
+      
+    - name: Create Release
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: "release-files/*"
+        token: ${{ secrets.GITHUB_TOKEN }}
+        name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+        generateReleaseNotes: true
+        allowUpdates: true
+        replacesArtifacts: true
