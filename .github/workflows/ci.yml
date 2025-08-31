@@ -47,7 +47,10 @@ jobs:
       shell: bash
       run: |
         mkdir -p package/input
-        cp target/liftup-*.jar package/input/
+        find target -name "*.jar" -exec cp {} package/input/ \;
+        echo "JAR_NAME=$(basename $(find package/input -name '*.jar'))" >> $GITHUB_ENV
+        echo "Found JAR: $JAR_NAME"
+        ls -la package/input/
         mkdir -p package/output
 
     - name: Create Windows Installer
@@ -55,10 +58,12 @@ jobs:
       shell: bash
       run: |
         VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+        echo "Using JAR: $JAR_NAME"
+        ls -la package/input/
         jpackage \
           --input package/input \
           --dest package/output \
-          --main-jar $(ls package/input/*.jar) \
+          --main-jar "$JAR_NAME" \
           --main-class com.liftup.Launcher \
           --type exe \
           --name LiftUp \
@@ -74,10 +79,12 @@ jobs:
       if: matrix.os == 'macos-15'
       run: |
         VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+        echo "Using JAR: $JAR_NAME"
+        ls -la package/input/
         jpackage \
           --input package/input \
           --dest package/output \
-          --main-jar $(ls package/input/*.jar) \
+          --main-jar "$JAR_NAME" \
           --main-class com.liftup.Launcher \
           --type dmg \
           --name LiftUp \
@@ -91,10 +98,12 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+        echo "Using JAR: $JAR_NAME"
+        ls -la package/input/
         jpackage \
           --input package/input \
           --dest package/output \
-          --main-jar $(ls package/input/*.jar) \
+          --main-jar "$JAR_NAME" \
           --main-class com.liftup.Launcher \
           --type deb \
           --name liftup \
