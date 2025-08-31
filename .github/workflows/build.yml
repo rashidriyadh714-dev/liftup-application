@@ -1,0 +1,167 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+  actions: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-2025, macos-15]
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-2025
+            platform: win
+          - os: macos-15
+            platform: mac
+      fail-fast: false
+    
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Build with Maven
+      run: mvn -B package --file pom.xml
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup for packaging
+      shell: bash
+      run: |
+        mkdir -p staging/input
+        mkdir -p staging/output
+        cp target/liftup-*.jar staging/input/
+        cp -r target/lib staging/input/
+        ls -R staging/
+
+    - name: Package Windows App
+      if: matrix.os == 'windows-2025'
+      shell: cmd
+      run: |
+        jpackage ^
+        --input staging/input ^
+        --dest staging/output ^
+        --name LiftUp ^
+        --main-jar liftup-7.1.0.jar ^
+        --main-class com.liftup.Launcher ^
+        --type exe ^
+        --win-dir-chooser ^
+        --win-shortcut ^
+        --win-menu ^
+        --app-version 7.1.0 ^
+        --vendor "LiftUp" ^
+        --win-per-user-install ^
+        --module-path staging/input/lib
+
+    - name: Package macOS App
+      if: matrix.os == 'macos-15'
+      run: |
+        jpackage \
+        --input staging/input \
+        --dest staging/output \
+        --name LiftUp \
+        --main-jar liftup-7.1.0.jar \
+        --main-class com.liftup.Launcher \
+        --type dmg \
+        --app-version 7.1.0 \
+        --vendor "LiftUp" \
+        --mac-package-identifier com.liftup \
+        --mac-package-name LiftUp \
+        --module-path staging/input/lib
+
+    - name: Package Linux App
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        jpackage \
+        --input staging/input \
+        --dest staging/output \
+        --name liftup \
+        --main-jar liftup-7.1.0.jar \
+        --main-class com.liftup.Launcher \
+        --type deb \
+        --app-version 7.1.0 \
+        --vendor "LiftUp" \
+        --linux-shortcut \
+        --linux-menu-group "Office" \
+        --module-path staging/input/lib
+
+    - name: List Build Output
+      shell: bash
+      run: |
+        echo "Contents of staging/output:"
+        ls -la staging/output/
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: liftup-${{ matrix.platform }}-installer
+        path: staging/output/*
+        retention-days: 5
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    timeout-minutes: 15
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Download Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Display structure of downloaded files
+      run: ls -R artifacts/
+        
+    - name: Prepare Release Files
+      run: |
+        mkdir -p release-files
+        find artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.deb" \) -exec cp -v {} release-files/ \;
+        ls -la release-files/
+      
+    - name: Create Release
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: "release-files/*"
+        token: ${{ secrets.GITHUB_TOKEN }}
+        name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+        generateReleaseNotes: true
+        allowUpdates: true
+        replacesArtifacts: true
