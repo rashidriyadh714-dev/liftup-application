@@ -20,6 +20,7 @@ jobs:
           - os: macos-15
             platform: mac
             extension: dmg
+      fail-fast: false
     
     runs-on: ${{ matrix.os }}
     
@@ -42,18 +43,28 @@ jobs:
     - name: Build with Maven
       run: mvn -B package --file pom.xml
 
+    - name: Prepare jpackage input
+      shell: bash
+      run: |
+        mkdir -p package/input
+        cp target/liftup-*.jar package/input/
+        mkdir -p package/output
+
     - name: Create Windows Installer
       if: matrix.os == 'windows-2025'
       shell: bash
       run: |
-        jpackage --input target/ \
-          --main-jar liftup-*.jar \
+        VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+        jpackage \
+          --input package/input \
+          --dest package/output \
+          --main-jar $(ls package/input/*.jar) \
           --main-class com.liftup.Launcher \
           --type exe \
           --name LiftUp \
-          --app-version ${{ github.ref_name }} \
+          --app-version $VERSION \
           --vendor "LiftUp" \
-          --copyright "Copyright © 2025" \
+          --description "LiftUp Application" \
           --win-dir-chooser \
           --win-menu \
           --win-shortcut \
@@ -62,39 +73,47 @@ jobs:
     - name: Create macOS DMG
       if: matrix.os == 'macos-15'
       run: |
-        jpackage --input target/ \
-          --main-jar liftup-*.jar \
+        VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+        jpackage \
+          --input package/input \
+          --dest package/output \
+          --main-jar $(ls package/input/*.jar) \
           --main-class com.liftup.Launcher \
           --type dmg \
           --name LiftUp \
-          --app-version ${{ github.ref_name }} \
+          --app-version $VERSION \
           --vendor "LiftUp" \
-          --copyright "Copyright © 2025" \
-          --mac-package-name "LiftUp" \
-          --mac-package-identifier com.liftup
+          --mac-package-identifier com.liftup \
+          --mac-package-name LiftUp \
+          --verbose
 
     - name: Create Linux Package
       if: matrix.os == 'ubuntu-latest'
       run: |
-        jpackage --input target/ \
-          --main-jar liftup-*.jar \
+        VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+        jpackage \
+          --input package/input \
+          --dest package/output \
+          --main-jar $(ls package/input/*.jar) \
           --main-class com.liftup.Launcher \
           --type deb \
           --name liftup \
-          --app-version ${{ github.ref_name }} \
+          --app-version $VERSION \
           --vendor "LiftUp" \
           --linux-shortcut \
-          --linux-package-name liftup \
-          --linux-menu-group "Office"
+          --linux-menu-group "Office" \
+          --verbose
+
+    - name: List Output Directory
+      shell: bash
+      run: |
+        ls -la package/output/
 
     - name: Upload Installer
       uses: actions/upload-artifact@v4
       with:
         name: liftup-${{ matrix.platform }}-installer
-        path: |
-          *.exe
-          *.dmg
-          *.deb
+        path: package/output/*
         retention-days: 5
 
   release:
@@ -117,8 +136,9 @@ jobs:
         
     - name: Prepare Release Files
       run: |
-        mkdir release-files
-        find artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.deb" \) -exec cp {} release-files/ \;
+        mkdir -p release-files
+        find artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.deb" \) -exec cp -v {} release-files/ \;
+        ls -la release-files/
       
     - name: Create Release
       uses: ncipollo/release-action@v1
